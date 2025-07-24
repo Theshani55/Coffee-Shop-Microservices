@@ -120,28 +120,6 @@ public class OrderControllerIntegrationTest {
     }
 
     @Test
-    void shouldFailToCreateOrderIfShopNotFound() throws Exception {
-        /*UUID nonExistentShopId = UUID.randomUUID();
-        when(shopServiceClient.doesShopExist(nonExistentShopId)).thenReturn(false);
-
-        OrderItemDto item1 = new OrderItemDto();
-        item1.setMenuItemId(menuItemId1);
-        item1.setQuantity(1);
-
-        OrderRequest request = OrderRequest
-                .builder().shopId(nonExistentShopId)
-                .customerId(customerId).items(List.of(item1)).build();
-
-        mockMvc.perform(post("/api/v1/orders")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound()) // 404
-                .andExpect(jsonPath("$.error").value("Not Found"))
-                .andExpect(jsonPath("$.message").value("Shop not found with ID: " + nonExistentShopId));
-   */
-    }
-
-    @Test
     void shouldGetOrderDetails() throws Exception {
         Order order = new Order();
         order.setCustomerId(customerId);

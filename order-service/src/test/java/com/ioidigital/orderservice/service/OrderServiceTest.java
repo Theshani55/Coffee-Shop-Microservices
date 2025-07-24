@@ -24,8 +24,6 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
-@Testcontainers
-@Transactional
 public class OrderServiceTest {
 
     @Autowired
@@ -33,18 +31,6 @@ public class OrderServiceTest {
 
     @Autowired
     private OrderRepository orderRepository;
-    @Container
-    public static PostgreSQLContainer<?> postgreSQLContainer = new PostgreSQLContainer<>("postgres:13")
-            .withDatabaseName("testdb")
-            .withUsername("testuser")
-            .withPassword("testpassword");
-
-
-    static {
-        System.setProperty("spring.datasource.url", postgreSQLContainer.getJdbcUrl());
-        System.setProperty("spring.datasource.username", postgreSQLContainer.getUsername());
-        System.setProperty("spring.datasource.password", postgreSQLContainer.getPassword());
-    }
 
     @BeforeEach
     void setUp() {
@@ -123,7 +109,7 @@ public class OrderServiceTest {
         UUID customerId = UUID.randomUUID();
         Order initialOrder = new Order();
         initialOrder.setCustomerId(customerId);
-        initialOrder.setStatus(OrderStatus.CANCELLED); // Already cancelled
+        initialOrder.setStatus(OrderStatus.CANCELLED);
         initialOrder.setTotalAmount(BigDecimal.valueOf(20.00));
         initialOrder.setCreatedAt(LocalDateTime.now());
         initialOrder.setUpdatedAt(LocalDateTime.now());

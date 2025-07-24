@@ -19,13 +19,11 @@ public class ShopServiceClient {
         shopQueues.put(shop2, new AtomicInteger(0));
     }
 
-    // Simulate API call to Shop Service
     public boolean doesShopExist(UUID shopId) {
         System.out.println("ShopServiceClient: Checking if shop exists " + shopId);
         return shopQueues.containsKey(shopId);
     }
 
-    // Simulate API call to Shop Service to add to queue
     public Integer addOrderToQueue(UUID shopId, UUID orderId) {
         System.out.println("ShopServiceClient: Adding order " + orderId + " to shop " + shopId + " queue.");
         AtomicInteger currentQueueSize = shopQueues.get(shopId);
@@ -35,7 +33,6 @@ public class ShopServiceClient {
         return null; // Shop not found
     }
 
-    // Simulate API call to Shop Service to remove from queue
     public void removeOrderFromQueue(UUID shopId, UUID orderId) {
         System.out.println("ShopServiceClient: Removing order " + orderId + " from shop " + shopId + " queue.");
         AtomicInteger currentQueueSize = shopQueues.get(shopId);

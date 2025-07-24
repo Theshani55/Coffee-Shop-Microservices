@@ -30,13 +30,11 @@ public class MenuServiceClient {
         names.put(croissantId, "Croissant");
     }
 
-    // Simulate API call to Product Service
     public BigDecimal getMenuItemPrice(UUID menuItemId) {
         System.out.println("ProductServiceClient: Getting price for item " + menuItemId);
         return prices.get(menuItemId); // Returns null if not found
     }
 
-    // Simulate API call to Product Service
     public String getMenuItemName(UUID menuItemId) {
         System.out.println("ProductServiceClient: Getting name for item " + menuItemId);
         return names.get(menuItemId); // Returns null if not found

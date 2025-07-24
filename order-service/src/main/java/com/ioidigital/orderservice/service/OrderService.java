@@ -13,7 +13,6 @@ public interface OrderService {
     public OrderResponse createOrder(OrderRequest request);
     public OrderResponse getOrderDetails(UUID orderId);
     public OrderResponse cancelOrder(UUID orderId);
-    // Value Add: Get all orders for a customer
     public List<OrderResponse> getCustomerOrders(UUID customerId);
 
 }

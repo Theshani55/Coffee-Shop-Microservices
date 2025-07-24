@@ -4,7 +4,9 @@ version: '3.8'
 
 services:
   orderservice:
-    build: . # Build from the current Dockerfile
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
     ports:
       - "8081:8081"
     environment:
@@ -20,6 +22,7 @@ services:
 
   postgres_db:
     image: postgres:15-alpine
+    container_name: postgres_db
     environment:
       POSTGRES_DB: orders_db
       POSTGRES_USER: user

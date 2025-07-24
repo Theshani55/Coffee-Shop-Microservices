@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
-    private final MenuServiceClient menuServiceClient; // For product details
+    private final MenuServiceClient menuServiceClient; // For menu details
     private final ShopServiceClient shopServiceClient; // For shop details and queue management
 
     @Transactional
@@ -47,14 +47,14 @@ public class OrderServiceImpl implements OrderService {
         // }
 
 
-        // 2. Validate menu items and calculate total item amount by calling Menu Service
+        // 2. Validate menu items and calculate total item amount
         BigDecimal totalAmount = BigDecimal.ZERO;
         List<OrderItem> orderItems = new ArrayList<>();
 
         for (OrderItemDto itemDto : request.getItems()) {
-            // Mock call to Product Service to get price and item name
+            // Mock call to Menu Service to get price and item name
             BigDecimal itemPrice = menuServiceClient.getMenuItemPrice(itemDto.getMenuItemId());
-            String itemName = menuServiceClient.getMenuItemName(itemDto.getMenuItemId()); // Fetch name too
+            String itemName = menuServiceClient.getMenuItemName(itemDto.getMenuItemId());
             if (itemPrice == null || itemName == null) {
                 throw new InvalidOrderException("Menu item not found or unavailable: " + itemDto.getMenuItemId());
             }
@@ -84,13 +84,11 @@ public class OrderServiceImpl implements OrderService {
         Order order = new Order();
         order.setCustomerId(request.getCustomerId());
         order.setShopId(request.getShopId());
-        order.setStatus(OrderStatus.PAID); // Initially PAID after successful payment
+        order.setStatus(OrderStatus.PAID);
         order.setTotalAmount(totalAmount);
-        order.setOrderTime(LocalDateTime.now()); // Set here or in @PrePersist
+        order.setOrderTime(LocalDateTime.now());
 
-        // 5. Simulate adding to queue and getting position/ETA
-        // This would be a call to the Shop/Location Service in a real scenario.
-        // For this, mock queue position and ETA
+        // 4. Simulate adding to queue and getting position/ETA
         Integer queuePosition = shopServiceClient.addOrderToQueue(request.getShopId(), order.getId());
         LocalDateTime estimatedPickupTime = LocalDateTime.now().plusMinutes(queuePosition * 2); // Simple estimation
 
@@ -99,15 +97,13 @@ public class OrderServiceImpl implements OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
-        // 6. Save Order Items
+        // 5. Save Order Items
         for (OrderItem item : orderItems) {
             item.setOrderId(savedOrder.getId());
             orderItemRepository.save(item);
         }
 
         // TODO: Publish an event (e.g., to Kafka) for Notification Service to send confirmation
-        // eventPublisher.publish(new OrderPlacedEvent(savedOrder.getId(), savedOrder.getCustomerId(),
-        //     savedOrder.getShopId(), savedOrder.getQueuePosition(), savedOrder.getEstimatedPickupTime()));
 
         return OrderResponse.fromOrderEntityToOrderResponse(savedOrder, orderItems);
     }
@@ -128,7 +124,7 @@ public class OrderServiceImpl implements OrderService {
             throw new InvalidOrderException("Cannot cancel an order that is already " + order.getStatus().name());
         }
 
-        // Remove from shop queue (mocked)
+        // Mocked Remove order from shop queue
         shopServiceClient.removeOrderFromQueue(order.getShopId(), order.getId());
 
 
@@ -138,7 +134,6 @@ public class OrderServiceImpl implements OrderService {
         List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
 
         // TODO: Publish an event for Notification Service to send cancellation notification
-        // eventPublisher.publish(new OrderCancelledEvent(order.getId(), order.getCustomerId(), order.getShopId()));
 
         return OrderResponse.fromOrderEntityToOrderResponse(order, items);
     }
