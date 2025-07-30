@@ -6,7 +6,7 @@
 		<groupId>com.ioidigital</groupId>
 		<artifactId>coffee-shop-parent</artifactId>
 		<version>1.0.0-SNAPSHOT</version>
-		<relativePath>../pom.xml</relativePath> <!-- Path to the parent pom.xml -->
+		<relativePath>../pom.xml</relativePath>
 	</parent>
 	<groupId>com.ioidigital</groupId>
 	<artifactId>order-service</artifactId>
@@ -63,6 +63,11 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
 			<groupId>org.testcontainers</groupId>
 			<artifactId>junit-jupiter</artifactId>
 			<version>1.19.0</version>
@@ -86,6 +91,13 @@
 							<artifactId>lombok</artifactId>
 						</exclude>
 					</excludes>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<parameters>true</parameters>
 				</configuration>
 			</plugin>
 		</plugins>

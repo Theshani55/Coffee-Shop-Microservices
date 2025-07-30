@@ -7,7 +7,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -30,17 +29,23 @@ public class OrderItem {
     @Column(name = "quantity", nullable = false)
     private int quantity;
 
-    @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
+    @Column(name = "price_at_order", nullable = false, precision = 10, scale = 2)
     private BigDecimal unitPrice;
-
-    @Column(name = "item_total_price", nullable = false, precision = 10, scale = 2)
-    private BigDecimal itemTotalPrice;
 
     @Column(name = "item_name", nullable = false)
     private String itemName;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    // Calculated field - not stored in database
+    @Transient
+    private BigDecimal itemTotalPrice;
+
+    // Calculate total price when needed
+    public BigDecimal getItemTotalPrice() {
+        if (unitPrice != null && quantity > 0) {
+            return unitPrice.multiply(BigDecimal.valueOf(quantity));
+        }
+        return BigDecimal.ZERO;
+    }
 
 }
 

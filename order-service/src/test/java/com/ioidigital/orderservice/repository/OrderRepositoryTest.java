@@ -71,17 +71,4 @@ public class OrderRepositoryTest {
         orderRepository.save(order2);
     }
 
-    @Test
-    void shouldFindOrdersByCustomerId() {
-        List<Order> orders = orderRepository.findByCustomerIdOrderByOrderTimeDesc(customerId1);
-        assertThat(orders).hasSize(2);
-        assertThat(orders.get(0).getTotalAmount()).isEqualByComparingTo(BigDecimal.valueOf(15.00)); // Most recent first
-    }
-
-    @Test
-    void shouldFindOrdersByShopId() {
-        List<Order> orders = orderRepository.findByShopIdOrderByOrderTimeAsc(shopId1);
-        assertThat(orders).hasSize(1);
-        assertThat(orders.get(0).getTotalAmount()).isEqualByComparingTo(BigDecimal.valueOf(10.50));
-    }
 }

@@ -1,6 +1,8 @@
 package com.ioidigital.orderservice.service.impl;
 
 import com.ioidigital.orderservice.dto.OrderItemDto;
+import com.ioidigital.orderservice.dto.OrderStatusUpdateRequest;
+import com.ioidigital.orderservice.dto.PagedResponse;
 import com.ioidigital.orderservice.entity.Order;
 import com.ioidigital.orderservice.entity.OrderItem;
 import com.ioidigital.orderservice.entity.OrderStatus;
@@ -15,6 +17,8 @@ import com.ioidigital.orderservice.repository.OrderRepository;
 import com.ioidigital.orderservice.service.external.MenuServiceClient;
 import com.ioidigital.orderservice.service.external.ShopServiceClient;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -69,10 +73,9 @@ public class OrderServiceImpl implements OrderService {
                     .menuItemId(itemDto.getMenuItemId())
                     .quantity(itemDto.getQuantity())
                     .unitPrice(itemPrice)
-                    .itemTotalPrice(itemPrice.multiply(BigDecimal.valueOf(itemDto.getQuantity())))
                     .itemName(itemName)
-                    .createdAt(LocalDateTime.now())
                     .build();
+            orderItems.add(orderItem);
 
         }
 
@@ -115,34 +118,102 @@ public class OrderServiceImpl implements OrderService {
         return OrderResponse.fromOrderEntityToOrderResponse(order, items);
     }
 
-    @Transactional
-    public OrderResponse cancelOrder(UUID orderId) {
+    @Override
+    public OrderResponse updateOrderStatus(UUID orderId, OrderStatusUpdateRequest request) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + orderId));
 
-        if (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELLED) {
-            throw new InvalidOrderException("Cannot cancel an order that is already " + order.getStatus().name());
+        // Validate status transition
+        validateStatusTransition(order.getStatus(), request.getStatus());
+
+        OrderStatus oldStatus = order.getStatus();
+        order.setStatus(request.getStatus());
+
+        // Handle specific status changes
+        if (request.getStatus() == OrderStatus.CANCELLED && oldStatus != OrderStatus.CANCELLED) {
+            // Remove from queue if being cancelled
+            shopServiceClient.removeOrderFromQueue(order.getShopId(), order.getId());
         }
 
-        // Mocked Remove order from shop queue
-        shopServiceClient.removeOrderFromQueue(order.getShopId(), order.getId());
-
-
-        order.setStatus(OrderStatus.CANCELLED);
         orderRepository.save(order);
-
         List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
 
-        // TODO: Publish an event for Notification Service to send cancellation notification
+        // TODO: Publish status change event for notifications
 
         return OrderResponse.fromOrderEntityToOrderResponse(order, items);
     }
 
-    //Get all orders for a customer
-    public List<OrderResponse> getCustomerOrders(UUID customerId) {
-        List<Order> orders = orderRepository.findByCustomerIdOrderByOrderTimeDesc(customerId);
-        return orders.stream()
-                .map(order -> OrderResponse.fromOrderEntityToOrderResponse(order, orderItemRepository.findByOrderId(order.getId())))
-                .collect(Collectors.toList());
+    @Override
+    public PagedResponse<OrderResponse> getCustomerOrders(UUID customerId, Pageable pageable) {
+        Page<Order> orderPage = orderRepository.findByCustomerId(customerId, pageable);
+        return buildPagedResponse(orderPage);
     }
+
+    @Override
+    public PagedResponse<OrderResponse> getAllOrders(Pageable pageable) {
+        Page<Order> orderPage = orderRepository.findAll(pageable);
+        return buildPagedResponse(orderPage);
+    }
+
+    @Override
+    public PagedResponse<OrderResponse> getOrdersByShop(UUID shopId, Pageable pageable) {
+        Page<Order> orderPage = orderRepository.findByShopId(shopId, pageable);
+        return buildPagedResponse(orderPage);
+    }
+
+    @Override
+    public PagedResponse<OrderResponse> getOrdersByStatus(OrderStatus status, Pageable pageable) {
+        Page<Order> orderPage = orderRepository.findByStatus(status, pageable);
+        return buildPagedResponse(orderPage);
+    }
+
+    // Build paginated response
+    private PagedResponse<OrderResponse> buildPagedResponse(Page<Order> orderPage) {
+        List<OrderResponse> orderResponses = orderPage.getContent().stream()
+                .map(order -> {
+                    List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+                    return OrderResponse.fromOrderEntityToOrderResponse(order, items);
+                })
+                .collect(Collectors.toList());
+
+        return PagedResponse.<OrderResponse>builder()
+                .content(orderResponses)
+                .page(orderPage.getNumber())
+                .size(orderPage.getSize())
+                .totalElements(orderPage.getTotalElements())
+                .totalPages(orderPage.getTotalPages())
+                .first(orderPage.isFirst())
+                .last(orderPage.isLast())
+                .hasNext(orderPage.hasNext())
+                .hasPrevious(orderPage.hasPrevious())
+                .build();
+    }
+
+    private void validateStatusTransition(OrderStatus currentStatus, OrderStatus newStatus) {
+        // Define allowed transitions
+        switch (currentStatus) {
+            case PAID:
+                if (newStatus != OrderStatus.PREPARING && newStatus != OrderStatus.CANCELLED) {
+                    throw new InvalidOrderException("Cannot change status from PAID to " + newStatus);
+                }
+                break;
+            case PREPARING:
+                if (newStatus != OrderStatus.READY_FOR_PICKUP && newStatus != OrderStatus.CANCELLED) {
+                    throw new InvalidOrderException("Cannot change status from PREPARING to " + newStatus);
+                }
+                break;
+            case READY_FOR_PICKUP:
+                if (newStatus != OrderStatus.COMPLETED && newStatus != OrderStatus.CANCELLED) {
+                    throw new InvalidOrderException("Cannot change status from READY_FOR_PICKUP to " + newStatus);
+                }
+                break;
+            case COMPLETED:
+                throw new InvalidOrderException("Cannot change status of a completed order");
+            case CANCELLED:
+                throw new InvalidOrderException("Cannot change status of a cancelled order");
+            default:
+                throw new InvalidOrderException("Unknown order status: " + currentStatus);
+        }
+    }
+
 }

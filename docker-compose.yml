@@ -5,8 +5,8 @@ version: '3.8'
 services:
   orderservice:
     build:
-      context: ./order-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./order-service/Dockerfile
     ports:
       - "8081:8081"
     environment:

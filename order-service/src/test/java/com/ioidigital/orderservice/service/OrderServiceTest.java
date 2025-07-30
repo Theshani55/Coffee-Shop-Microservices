@@ -71,58 +71,8 @@ public class OrderServiceTest {
     }
 
     @Test
-    void shouldCancelOrder() {
-        // Given
-        UUID customerId = UUID.randomUUID();
-        UUID orderId = UUID.randomUUID();
-        Order initialOrder = new Order();
-        initialOrder.setId(orderId);
-        initialOrder.setCustomerId(customerId);
-        initialOrder.setStatus(OrderStatus.PENDING);
-        initialOrder.setTotalAmount(BigDecimal.valueOf(15.00));
-        initialOrder.setCreatedAt(LocalDateTime.now());
-        initialOrder.setUpdatedAt(LocalDateTime.now());
-
-        Order savedOrder = orderRepository.save(initialOrder);
-
-        // When
-        OrderResponse cancelledOrder = orderService.cancelOrder(savedOrder.getId());
-
-        // Then
-        assertNotNull(cancelledOrder);
-        assertEquals(OrderStatus.CANCELLED, cancelledOrder.getStatus());
-
-        // Verify status in the database
-        Order retrievedOrder = orderRepository.findById(savedOrder.getId()).orElse(null);
-        assertNotNull(retrievedOrder);
-        assertEquals(OrderStatus.CANCELLED, retrievedOrder.getStatus());
-    }
-
-    @Test
     void shouldThrowOrderNotFoundExceptionOnCancelNonExistentOrder() {
         //TODO
     }
 
-    @Test
-    void shouldNotAllowCancellationOfAlreadyCancelledOrder() {
-        // Given
-        UUID customerId = UUID.randomUUID();
-        Order initialOrder = new Order();
-        initialOrder.setCustomerId(customerId);
-        initialOrder.setStatus(OrderStatus.CANCELLED);
-        initialOrder.setTotalAmount(BigDecimal.valueOf(20.00));
-        initialOrder.setCreatedAt(LocalDateTime.now());
-        initialOrder.setUpdatedAt(LocalDateTime.now());
-
-        Order savedOrder = orderRepository.save(initialOrder);
-
-        // When / Then
-        assertThrows(IllegalStateException.class, () -> orderService.cancelOrder(savedOrder.getId()),
-                "Order already cancelled and cannot be cancelled again.");
-
-        // Verify status remains CANCELLED in the database
-        Order retrievedOrder = orderRepository.findById(savedOrder.getId()).orElse(null);
-        assertNotNull(retrievedOrder);
-        assertEquals(OrderStatus.CANCELLED, retrievedOrder.getStatus());
-    }
 }

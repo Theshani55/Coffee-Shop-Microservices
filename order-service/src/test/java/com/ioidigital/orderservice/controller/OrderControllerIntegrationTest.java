@@ -137,22 +137,4 @@ public class OrderControllerIntegrationTest {
                 .andExpect(jsonPath("$.queuePosition").value(3));
     }
 
-    @Test
-    void shouldCancelOrderSuccessfully() throws Exception {
-        Order order = new Order();
-        order.setCustomerId(customerId);
-        order.setShopId(shopId);
-        order.setStatus(OrderStatus.PAID);
-        order.setTotalAmount(BigDecimal.valueOf(10.00));
-        orderRepository.save(order);
-
-        mockMvc.perform(post("/api/v1/orders/" + order.getId() + "/cancel"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.orderId").value(order.getId().toString()))
-                .andExpect(jsonPath("$.status").value(OrderStatus.CANCELLED.name()));
-
-        Optional<Order> cancelledOrder = orderRepository.findById(order.getId());
-        assertThat(cancelledOrder).isPresent();
-        assertThat(cancelledOrder.get().getStatus()).isEqualTo(OrderStatus.CANCELLED);
-    }
 }
