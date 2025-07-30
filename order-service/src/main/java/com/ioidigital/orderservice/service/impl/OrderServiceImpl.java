@@ -197,13 +197,18 @@ public class OrderServiceImpl implements OrderService {
                     throw new InvalidOrderException("Cannot change status from PAID to " + newStatus);
                 }
                 break;
+            case PENDING:
+                if (newStatus != OrderStatus.PREPARING && newStatus != OrderStatus.CANCELLED) {
+                    throw new InvalidOrderException("Cannot change status from PENDING to " + newStatus);
+                }
+                break;
             case PREPARING:
                 if (newStatus != OrderStatus.READY_FOR_PICKUP && newStatus != OrderStatus.CANCELLED) {
                     throw new InvalidOrderException("Cannot change status from PREPARING to " + newStatus);
                 }
                 break;
             case READY_FOR_PICKUP:
-                if (newStatus != OrderStatus.COMPLETED && newStatus != OrderStatus.CANCELLED) {
+                if (newStatus != OrderStatus.COMPLETED && newStatus.equals(OrderStatus.CANCELLED)) {
                     throw new InvalidOrderException("Cannot change status from READY_FOR_PICKUP to " + newStatus);
                 }
                 break;

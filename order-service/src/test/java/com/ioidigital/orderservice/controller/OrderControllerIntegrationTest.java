@@ -95,13 +95,15 @@ public class OrderControllerIntegrationTest {
 
     @Test
     void shouldCreateOrderSuccessfully() throws Exception {
-        OrderItemDto item1 = new OrderItemDto();
-        item1.setMenuItemId(menuItemId1);
-        item1.setQuantity(2);
+        OrderItemDto item1 = OrderItemDto.builder()
+                .menuItemId(menuItemId1)
+                .quantity(2)
+                .build();
 
-        OrderItemDto item2 = new OrderItemDto();
-        item2.setMenuItemId(menuItemId2);
-        item2.setQuantity(1);
+        OrderItemDto item2 = OrderItemDto.builder()
+                .menuItemId(menuItemId2)
+                .quantity(1)
+                .build();
 
         OrderRequest request = OrderRequest
                 .builder().shopId(shopId)
