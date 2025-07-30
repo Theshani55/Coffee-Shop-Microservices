@@ -1,8 +1,8 @@
 package com.ioidigital.orderservice.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ioidigital.orderservice.dto.OrderRequest;
 import com.ioidigital.orderservice.dto.OrderItemDto;
+import com.ioidigital.orderservice.dto.OrderRequest;
 import com.ioidigital.orderservice.entity.Order;
 import com.ioidigital.orderservice.entity.OrderStatus;
 import com.ioidigital.orderservice.repository.OrderRepository;
@@ -26,18 +26,14 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.assertj.core.api.Assertions.assertThat;
 
 
 @SpringBootTest
