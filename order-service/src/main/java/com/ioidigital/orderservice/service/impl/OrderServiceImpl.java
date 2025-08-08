@@ -60,7 +60,7 @@ public class OrderServiceImpl implements OrderService {
             BigDecimal itemPrice = menuServiceClient.getMenuItemPrice(itemDto.getMenuItemId());
             String itemName = menuServiceClient.getMenuItemName(itemDto.getMenuItemId());
             if (itemPrice == null || itemName == null) {
-                throw new InvalidOrderException("Menu item not found or unavailable: " + itemDto.getMenuItemId());
+                throw new ResourceNotFoundException("Menu item not found or unavailable: " + itemDto.getMenuItemId());
             }
             if (itemDto.getQuantity() <= 0) {
                 throw new InvalidOrderException("Quantity for item " + itemName + " must be positive.");

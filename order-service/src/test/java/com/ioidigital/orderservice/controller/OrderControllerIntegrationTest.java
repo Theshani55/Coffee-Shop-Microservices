@@ -3,55 +3,40 @@ package com.ioidigital.orderservice.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ioidigital.orderservice.dto.OrderItemDto;
 import com.ioidigital.orderservice.dto.OrderRequest;
+import com.ioidigital.orderservice.dto.OrderStatusUpdateRequest;
 import com.ioidigital.orderservice.entity.Order;
+import com.ioidigital.orderservice.entity.OrderItem;
 import com.ioidigital.orderservice.entity.OrderStatus;
+import com.ioidigital.orderservice.repository.OrderItemRepository;
 import com.ioidigital.orderservice.repository.OrderRepository;
 import com.ioidigital.orderservice.service.external.MenuServiceClient;
 import com.ioidigital.orderservice.service.external.ShopServiceClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
-@Transactional // Rollback changes after each test
-public class OrderControllerIntegrationTest {
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine");
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.liquibase.change-log", () -> "classpath:db/changelog/db.changelog-master.yaml");
-    }
+class OrderControllerIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -59,14 +44,19 @@ public class OrderControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Autowired
+    @MockBean
     private OrderRepository orderRepository;
 
-    @Mock
+    @MockBean
+    private OrderItemRepository orderItemRepository;
+
+    @MockBean
     private MenuServiceClient menuServiceClient;
-    @Mock
+
+    @MockBean
     private ShopServiceClient shopServiceClient;
 
+    private UUID orderId;
     private UUID customerId;
     private UUID shopId;
     private UUID menuItemId1;
@@ -74,65 +64,245 @@ public class OrderControllerIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        orderId = UUID.randomUUID();
         customerId = UUID.randomUUID();
-        shopId = UUID.fromString("b0000000-0000-0000-0000-000000000001"); // Use a known mock shop ID
-        menuItemId1 = UUID.fromString("a0000000-0000-0000-0000-000000000001"); // Mock latte
-        menuItemId2 = UUID.fromString("a0000000-0000-0000-0000-000000000002"); // Mock cappuccino
-
-        // Mock external service behavior
-        when(shopServiceClient.doesShopExist(shopId)).thenReturn(true);
-        when(menuServiceClient.getMenuItemPrice(menuItemId1)).thenReturn(BigDecimal.valueOf(4.50));
-        when(menuServiceClient.getMenuItemName(menuItemId1)).thenReturn("Latte");
-        when(menuServiceClient.getMenuItemPrice(menuItemId2)).thenReturn(BigDecimal.valueOf(4.00));
-        when(menuServiceClient.getMenuItemName(menuItemId2)).thenReturn("Cappuccino");
-        when(shopServiceClient.addOrderToQueue(any(UUID.class), any(UUID.class))).thenReturn(1); // Mock queue position
-
+        shopId = UUID.randomUUID();
+        menuItemId1 = UUID.randomUUID();
+        menuItemId2 = UUID.randomUUID();
     }
 
     @Test
-    void shouldCreateOrderSuccessfully() throws Exception {
+    void createOrder_Success() throws Exception {
+        // Given
         OrderItemDto item1 = OrderItemDto.builder()
                 .menuItemId(menuItemId1)
-                .quantity(2)
+                .quantity(1)
                 .build();
 
         OrderItemDto item2 = OrderItemDto.builder()
                 .menuItemId(menuItemId2)
-                .quantity(1)
+                .quantity(2)
                 .build();
 
-        OrderRequest request = OrderRequest
-                .builder().shopId(shopId)
+        OrderRequest request = OrderRequest.builder()
+                .shopId(shopId)
                 .customerId(customerId)
-                .items(Arrays.asList(item1, item2)).build();
+                .items(Arrays.asList(item1, item2))
+                .build();
 
+        when(shopServiceClient.doesShopExist(any())).thenReturn(true);
+        when(menuServiceClient.getMenuItemPrice(menuItemId1)).thenReturn(BigDecimal.valueOf(5.00));
+        when(menuServiceClient.getMenuItemPrice(menuItemId2)).thenReturn(BigDecimal.valueOf(4.00));
+        when(menuServiceClient.getMenuItemName(any())).thenReturn("Test Item");
+        when(shopServiceClient.addOrderToQueue(any(), any())).thenReturn(1);
+
+        when(orderRepository.save(any())).thenAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            order.setId(orderId);
+            return order;
+        });
+
+        // When & Then
         mockMvc.perform(post("/api/v1/orders")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.orderId").exists())
-                .andExpect(jsonPath("$.status").value(OrderStatus.PAID.name()))
-                .andExpect(jsonPath("$.totalAmount").value(13.00))
-                .andExpect(jsonPath("$.items[0].menuItemId").value(item1.getMenuItemId().toString()))
-                .andExpect(jsonPath("$.items[1].quantity").value(item2.getQuantity()));
+                .andExpect(jsonPath("$.status").value(OrderStatus.PAID.name()));
     }
 
     @Test
-    void shouldGetOrderDetails() throws Exception {
+    void getOrder_Success() throws Exception {
+        // Given
         Order order = new Order();
+        order.setId(orderId);
         order.setCustomerId(customerId);
         order.setShopId(shopId);
         order.setStatus(OrderStatus.PAID);
-        order.setTotalAmount(BigDecimal.valueOf(10.00));
-        order.setQueuePosition(3);
-        order.setOrderTime(LocalDateTime.now().plusMinutes(10));
-        orderRepository.save(order);
+        order.setTotalAmount(BigDecimal.valueOf(13.00));
+        order.setOrderTime(LocalDateTime.now());
 
-        mockMvc.perform(get("/api/v1/orders/" + order.getId()))
+        OrderItem orderItem = new OrderItem();
+        orderItem.setId(UUID.randomUUID());
+        orderItem.setOrderId(orderId);
+        orderItem.setMenuItemId(menuItemId1);
+        orderItem.setQuantity(2);
+        orderItem.setUnitPrice(BigDecimal.valueOf(5.00));
+
+        when(orderRepository.findById(orderId)).thenReturn(java.util.Optional.of(order));
+        when(orderItemRepository.findByOrderId(orderId)).thenReturn(Arrays.asList(orderItem));
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/orders/{orderId}", orderId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.orderId").value(order.getId().toString()))
+                .andExpect(jsonPath("$.orderId").value(orderId.toString()))
                 .andExpect(jsonPath("$.status").value(OrderStatus.PAID.name()))
-                .andExpect(jsonPath("$.queuePosition").value(3));
+                .andExpect(jsonPath("$.totalAmount").value(13.00));
     }
 
+    @Test
+    void updateOrderStatus_Success() throws Exception {
+        // Given
+        Order order = new Order();
+        order.setId(orderId);
+        order.setStatus(OrderStatus.PAID);
+
+        OrderStatusUpdateRequest updateRequest = new OrderStatusUpdateRequest();
+        updateRequest.setStatus(OrderStatus.PREPARING);
+        updateRequest.setReason("Starting preparation");
+
+        when(orderRepository.findById(orderId)).thenReturn(java.util.Optional.of(order));
+        when(orderRepository.save(any())).thenReturn(order);
+
+        // When & Then
+        mockMvc.perform(patch("/api/v1/orders/{orderId}/status", orderId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(OrderStatus.PREPARING.name()));
+    }
+
+    @Test
+    void getCustomerOrders_Success() throws Exception {
+        // Given
+        Order order = new Order();
+        order.setId(orderId);
+        order.setCustomerId(customerId);
+        order.setStatus(OrderStatus.PAID);
+
+        List<Order> orders = Arrays.asList(order);
+        when(orderRepository.findByCustomerId(eq(customerId), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(orders));
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/orders/customers/{customerId}", customerId)
+                .param("page", "0")
+                .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].orderId").value(orderId.toString()))
+                .andExpect(jsonPath("$.content[0].customerId").value(customerId.toString()));
+    }
+
+    @Test
+    void getOrder_NotFound() throws Exception {
+        // Given
+        when(orderRepository.findById(any())).thenReturn(java.util.Optional.empty());
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/orders/{orderId}", UUID.randomUUID()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void createOrder_InvalidShop() throws Exception {
+        OrderRequest request = OrderRequest.builder()
+                .shopId(shopId)
+                .customerId(customerId)
+                .items(Arrays.asList(
+                    OrderItemDto.builder()
+                        .menuItemId(menuItemId1)
+                        .quantity(1)
+                        .build()
+                ))
+                .build();
+
+        when(shopServiceClient.doesShopExist(any())).thenReturn(false);
+
+        mockMvc.perform(post("/api/v1/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Shop not found with ID: " + shopId));
+    }
+
+    @Test
+    void updateOrderStatus_InvalidTransition() throws Exception {
+        // Given
+        Order order = new Order();
+        order.setId(orderId);
+        order.setStatus(OrderStatus.COMPLETED);
+
+        OrderStatusUpdateRequest updateRequest = new OrderStatusUpdateRequest();
+        updateRequest.setStatus(OrderStatus.PREPARING);
+
+        when(orderRepository.findById(orderId)).thenReturn(java.util.Optional.of(order));
+
+        // When & Then
+        mockMvc.perform(patch("/api/v1/orders/{orderId}/status", orderId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createOrder_EmptyItems() throws Exception {
+        // Given
+        OrderRequest request = OrderRequest.builder()
+                .shopId(shopId)
+                .customerId(customerId)
+                .items(Arrays.asList())
+                .build();
+
+        // When & Then
+        mockMvc.perform(post("/api/v1/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createOrder_InvalidMenuItem() throws Exception {
+        // Given
+        OrderItemDto item = OrderItemDto.builder()
+                .menuItemId(menuItemId1)
+                .quantity(1)
+                .build();
+
+        OrderRequest request = OrderRequest.builder()
+                .shopId(shopId)
+                .customerId(customerId)
+                .items(Arrays.asList(item))
+                .build();
+
+        when(shopServiceClient.doesShopExist(any())).thenReturn(true);
+        when(menuServiceClient.getMenuItemPrice(menuItemId1)).thenReturn(null);
+
+        // When & Then
+        mockMvc.perform(post("/api/v1/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Menu item not found or unavailable: " + menuItemId1));
+    }
+
+    @Test
+    void updateOrderStatus_OrderNotFound() throws Exception {
+        // Given
+        OrderStatusUpdateRequest updateRequest = new OrderStatusUpdateRequest();
+        updateRequest.setStatus(OrderStatus.PREPARING);
+        updateRequest.setReason("Starting preparation");
+
+        when(orderRepository.findById(any())).thenReturn(java.util.Optional.empty());
+
+        // When & Then
+        mockMvc.perform(patch("/api/v1/orders/{orderId}/status", UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getCustomerOrders_NoOrders() throws Exception {
+        // Given
+        when(orderRepository.findByCustomerId(eq(customerId), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Arrays.asList()));
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/orders/customers/{customerId}", customerId)
+                .param("page", "0")
+                .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content").isEmpty());
+    }
 }

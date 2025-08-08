@@ -21,10 +21,10 @@ FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
 # Copy the built JAR file from the build stage
-COPY --from=build /workspace/order-service/target/*.jar app.jar
+COPY --from=build /workspace/order-service/target/*.jar order-service.jar
 
 # Expose the port the Spring Boot application runs on
 EXPOSE 8081
 
 # Run the application
-ENTRYPOINT ["java","-jar","app.jar"]
+ENTRYPOINT ["java","-jar","order-service.jar"]
