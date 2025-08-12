@@ -33,6 +33,28 @@ The system consists of the following microservices:
 
 ## Getting Started
 
+### Quick Setup with Agent Mode 🚀
+
+For enhanced development with IntelliJ IDEA "agent mode" features (hot reload, debugging, monitoring):
+
+**Linux/macOS:**
+```bash
+git clone https://github.com/yourusername/Coffee-Shop-Microservices.git
+cd Coffee-Shop-Microservices
+./setup-agent-mode.sh
+```
+
+**Windows:**
+```cmd
+git clone https://github.com/yourusername/Coffee-Shop-Microservices.git
+cd Coffee-Shop-Microservices
+setup-agent-mode.bat
+```
+
+Then follow the detailed setup guide: [INTELLIJ_AGENT_MODE_SETUP.md](INTELLIJ_AGENT_MODE_SETUP.md)
+
+### Manual Setup
+
 1. Clone the repository:
 ```bash
 git clone https://github.com/yourusername/Coffee-Shop-Microservices.git
@@ -73,6 +95,15 @@ Each service includes Swagger/OpenAPI documentation. After starting the services
 - Shop location management
 - Real-time notifications
 - Order queuing and processing
+
+### 🛠️ Development Features (Agent Mode)
+
+- **Hot Reload**: Automatic application restart on code changes with Spring Boot DevTools
+- **Live Reload**: Browser auto-refresh for static resources 
+- **Remote Debugging**: Debug applications running in containers
+- **Enhanced Monitoring**: All actuator endpoints enabled in development
+- **Development Profiling**: Detailed SQL logging and debug information
+- **IntelliJ Integration**: Pre-configured run configurations and project settings
 
 ## Testing
 
