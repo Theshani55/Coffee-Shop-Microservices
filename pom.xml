@@ -108,6 +108,7 @@
     </build>
 
     <modules>
+        <module>order-service</module>
     </modules>
 
 </project>
